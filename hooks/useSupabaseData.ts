@@ -29,6 +29,11 @@ export function useSupabaseData(user: User | null) {
 
   // Fetch all songs
   const fetchSongs = async () => {
+    if (!user) {
+      setSongs([])
+      return
+    }
+    
     try {
       const { data: songsData, error } = await supabase
         .from('songs')
@@ -39,16 +44,14 @@ export function useSupabaseData(user: User | null) {
 
       let userLikedSongs = new Set<number>()
       
-      if (user) {
-        const { data: likedData } = await supabase
-          .from('liked_songs')
-          .select('song_id')
-          .eq('user_id', user.id)
-        
-        if (likedData) {
-          userLikedSongs = new Set(likedData.map(item => item.song_id))
-          setLikedSongs(userLikedSongs)
-        }
+      const { data: likedData } = await supabase
+        .from('liked_songs')
+        .select('song_id')
+        .eq('user_id', user.id)
+      
+      if (likedData) {
+        userLikedSongs = new Set(likedData.map(item => item.song_id))
+        setLikedSongs(userLikedSongs)
       }
 
       const convertedSongs = songsData?.map(song => 
@@ -63,22 +66,21 @@ export function useSupabaseData(user: User | null) {
 
       setSongs(sortedSongs);
 
-      if (user) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('last_song_file_id')
-          .eq('id', user.id)
-          .single()
+      const { data: userData } = await supabase
+        .from('users')
+        .select('last_song_file_id')
+        .eq('id', user.id)
+        .single()
 
-        if (userData?.last_song_file_id) {
-          const lastSong = convertedSongs.find(song => song.file_id === userData.last_song_file_id)
-          if (lastSong) {
-            setLastPlayedSong(lastSong)
-          }
+      if (userData?.last_song_file_id) {
+        const lastSong = convertedSongs.find(song => song.file_id === userData.last_song_file_id)
+        if (lastSong) {
+          setLastPlayedSong(lastSong)
         }
       }
     } catch (error) {
       console.error('Error fetching songs:', error)
+      setSongs([]) // Set empty array on error
     }
   }
 
